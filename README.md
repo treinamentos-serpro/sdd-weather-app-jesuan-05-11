@@ -76,6 +76,63 @@ pnpm test:coverage   # cobertura
 pnpm test:e2e        # testes E2E (Playwright)
 ```
 
+### Cobertura dos critérios de aceite
+
+A suíte deriva da [spec](specs/weather-app-spec.md) e das
+[tarefas](tasks/weather-app-tasks.md). Os unitários usam mocks de service ou
+`fetch`; o setup bloqueia chamadas de rede não configuradas. Os E2E interceptam
+Open-Meteo com `page.route`, bloqueiam endpoints sem mock e fixam o relógio em
+05/11/2026, alinhado às cinco datas consecutivas das fixtures.
+
+| Critérios / tarefas | Verificação automatizada |
+| --- | --- |
+| RF1; T-10, T-24 | [Service](tests/unit/services/weatherService.test.ts), [busca](tests/unit/components/SearchBar.test.tsx) e [resultados](tests/unit/components/CityResults.test.tsx): espaços, acentos/caracteres especiais, contexto geográfico, homônimos e coordenadas selecionadas. |
+| RF2–RF3; T-05, T-07, T-25 | [Códigos WMO](tests/unit/lib/weatherCodes.test.ts), [datas civis em fusos distintos](tests/unit/lib/format.test.ts) e [componentes meteorológicos](tests/unit/components/WeatherComponents.test.tsx): campos/unidades, dados parciais e fallback. |
+| RF4; T-03, T-25 | [Temperaturas](tests/unit/lib/temperature.test.ts), [controle de unidade](tests/unit/components/UnitToggle.test.tsx) e [App](tests/unit/App.test.tsx): valores de referência, mínima/máxima nas duas escalas, teclado e troca sem nova requisição. |
+| RF6; T-12, T-14 | [Service](tests/unit/services/weatherService.test.ts) e [hook](tests/unit/hooks/useWeather.test.ts): timeout no limite de 10 segundos, HTTP/rede, retry, cancelamento e respostas fora de ordem. |
+| RF1–RF6; T-27, T-28 | [E2E](tests/e2e/weather-app.spec.ts): fluxo completo, vazio/erro/retry, homônimos, dados ausentes, mudança de unidade durante loading, teclado e resize sem perda de estado. |
+
+Playwright executa os casos em Chromium desktop e WebKit com emulação de iPhone
+13; o fluxo responsivo verifica 320, 768 e 1440 px, incluindo ausência de rolagem
+horizontal. Para instalar navegadores e bibliotecas do sistema em Linux:
+
+```bash
+pnpm exec playwright install --with-deps chromium webkit
+pnpm test:e2e --workers=1   # útil em ambientes com pouca memória
+```
+
+Os testes incluem limites de contraste AA (4,5:1 para os textos verificados e
+3:1 para limites de controles), foco, redução de movimento e interface
+utilizável em até 2 segundos mesmo com a fonte pendente. Não substituem uma
+auditoria WCAG completa com leitores de tela, medição sob conexão típica,
+nem a validação em Edge, Firefox e dispositivos físicos.
+
+### Hardening para produção
+
+- **Teclado e foco:** busca vazia devolve foco ao campo; seleção/retry do tempo
+  focam o conteúdo persistente; respostas não roubam o foco. Retry da busca
+  retorna ao campo, e ações de busca/previsão têm nomes distintos.
+- **Estados e resiliência:** status/alertas anunciam a mensagem completa;
+  timeout de 10 segundos e retry preservam a cidade. Editar busca pendente
+  cancela a resposta antiga e libera novo envio sem cancelar a previsão.
+- **Dados inconsistentes:** JSON malformado é erro de resposta, inclusive no
+  WebKit. Datas impossíveis/duplicadas não produzem cartões enganosos;
+  percentuais fora de 0–100, métricas negativas e extremos invertidos aparecem
+  como “—”, mantendo os demais campos válidos.
+- **Performance e UX:** `Intl` reutilizado, fundo sem attachment fixo no mobile,
+  fonte Inter variável latin servida localmente com `font-display: swap`
+  (48,25 kB no build), sem folha bloqueante do Google Fonts. Controles de
+  unidade têm alvo de toque de pelo menos 44 × 44 px; nomes geográficos longos
+  não provocam rolagem horizontal em 320 px.
+
+Validação local do hardening: **161 unitários**, **48 E2E** (Chromium e
+WebKit/mobile), **100% de linhas** e **96,99% de branches**. `pnpm lint`,
+`pnpm build`, `pnpm test` e `pnpm test:coverage` aprovados; E2E completo
+aprovado com `pnpm test:e2e --reporter=list,json`. No teste com a fonte
+deliberadamente pendente, controles iniciais disponíveis em **435 ms** no
+Chromium e **475 ms** no WebKit/mobile, medidos contra o servidor local Vite;
+esses valores não representam desempenho em rede real.
+
 ---
 
 ## Arquitetura do app

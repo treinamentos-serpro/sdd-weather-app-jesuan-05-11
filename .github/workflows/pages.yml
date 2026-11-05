@@ -31,10 +31,20 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
+        env:
+          VITE_BASE: /${{ github.event.repository.name }}/app/
+
+      - name: Montar site
+        run: |
+          mkdir -p _site/app
+          cp -a docs/. _site/
+          cp -a dist/. _site/app/
+          cp -a workshop _site/workshop
+
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v4
         with:
-          path: dist
+          path: _site
 
   deploy:
     if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'

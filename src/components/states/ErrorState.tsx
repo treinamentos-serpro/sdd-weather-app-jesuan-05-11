@@ -1,22 +1,29 @@
+import { RotateCcw, TriangleAlert } from 'lucide-react';
+
 interface ErrorStateProps {
   message: string;
   onRetry: () => void;
+  retryLabel?: string;
 }
 
-/** Estado de erro com ação de "tentar novamente". */
-export default function ErrorState({ message, onRetry }: ErrorStateProps) {
+export default function ErrorState({
+  message,
+  onRetry,
+  retryLabel = 'Tentar novamente',
+}: ErrorStateProps) {
   return (
-    <div role="alert" className="flex flex-col items-center gap-4 py-16 text-center">
-      <span aria-hidden="true" className="text-4xl">
-        ⚠️
-      </span>
-      <p className="text-white/80">{message}</p>
+    <div className="flex flex-wrap items-center gap-4 py-5">
+      <p role="alert" aria-atomic="true" className="flex items-center gap-2 text-sm text-rose-200">
+        <TriangleAlert size={18} className="shrink-0" aria-hidden="true" />
+        {message}
+      </p>
       <button
         type="button"
         onClick={onRetry}
-        className="rounded-lg bg-accent-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-accent-600"
+        className="flex min-h-11 items-center gap-2 rounded-md border border-slate-400 px-3 text-sm hover:bg-white/10"
       >
-        Tentar novamente
+        <RotateCcw size={16} aria-hidden="true" />
+        {retryLabel}
       </button>
     </div>
   );
